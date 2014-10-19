@@ -1,0 +1,56 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          rc.local
+# Required-Start:    $all
+# Required-Stop:     
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Run /etc/rc.local if it exist
+# Description:       This script executes commands in /etc/rc.local 
+#                    at startup, if /etc/rc.local exists and 
+#                    executes /etc/rc.local.shutdown when the
+#                    system goes down for shutdown or reboot.
+### END INIT INFO
+
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+. /lib/init/vars.sh
+. /lib/lsb/init-functions
+
+do_start() {
+    if [ -x /etc/rc.local.startup ]; then
+            [ "$VERBOSE" != no ] && log_begin_msg "Running local boot scripts (/etc/rc.local)"
+        /etc/rc.local.startup
+        ES=$?
+        [ "$VERBOSE" != no ] && log_end_msg $ES
+        return $ES
+    fi
+}
+do_stop() {
+    if [ -x /etc/rc.local.shutdown ]; then
+            [ "$VERBOSE" != no ] && log_begin_msg "Running local boot scripts (/etc/rc.local)"
+        /etc/rc.local.shutdown
+        ES=$?
+        [ "$VERBOSE" != no ] && log_end_msg $ES
+        return $ES
+    fi
+}
+
+case "$1" in
+    start)
+    do_start
+        ;;
+    restart|reload|force-reload)
+        echo "Error: argument '$1' not supported" >&2
+        exit 3
+        ;;
+    stop)
+    do_stop
+        ;;
+    *)
+        echo "Usage: $0 start|stop" >&2
+        exit 3
+        ;;
+esac
+

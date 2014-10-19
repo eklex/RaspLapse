@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+
+import time
+import pickle
+import os
+import sys
+
+py_dir       = os.path.dirname(os.path.abspath(__file__))
+py_filename  = os.path.abspath(__file__).split("/")[-1]
+bk_bootfile  = py_dir+"/"+py_filename.replace(".py","")+"-boot.bak"
+bk_haltfile  = py_dir+"/"+py_filename.replace(".py","")+"-halt.bak"
+log_filename = py_dir+"/bootcheck.log"
+
+def checkdate(previous_date, current_date=time.time()):
+	current_date = int(float(current_date))
+	type(current_date)
+	previous_date = int(float(previous_date))
+	type(previous_date)
+	retval = False
+	if not previous_date or previous_date < current_date:
+		retval = True
+	else:
+		retval = False
+	return (retval, current_date)
+
+def backup(filename, elt):
+	with open(filename, "wb") as bkf:
+		pklr = pickle.Pickler(bkf)
+		pklr.dump(elt)
+
+def restore(filename):
+	elt = None
+	try:
+		with open(filename, "rb") as bkf:
+			pklr = pickle.Unpickler(bkf)
+			elt = pklr.load()
+	except IOError:
+		return None
+	return elt
+
+if __name__ == "__main__":
+	boot = True
+	halt = False
+	if len(sys.argv) > 1:
+		if sys.argv[1] == "boot":
+			boot = True
+			halt = False
+		elif sys.argv[1] == "halt":
+			halt = True
+			boot = False
+	
+	if boot == True:
+		elt = restore(bk_bootfile)
+	elif halt == True:
+		elt = restore(bk_haltfile)
+	
+	if elt != None:
+		if boot == True:
+			boot_acc = int(elt["boot_acc"])
+			(valid_time, current_time) = checkdate(elt["boot_time"])
+		elif halt == True:
+			halt_acc = int(elt["halt_acc"])
+			(valid_time, current_time) = checkdate(elt["halt_time"])
+	else:
+		boot_acc = 0
+		halt_acc = 0
+		valid_time = True
+		current_time = time.time()
+		
+	elt = {}
+	if boot == True:
+		elt["boot_acc"] = str(boot_acc + 1)
+		elt["boot_time"] = str(current_time)
+		elt["boot_path"] = py_dir
+		elt["boot_valid_time"] = str(valid_time)
+		date = int(float(elt["boot_time"]))
+		backup(bk_bootfile, elt)
+	elif halt == True:
+		elt["halt_acc"] = str(halt_acc + 1)
+		elt["halt_time"] = str(current_time)
+		elt["halt_path"] = py_dir
+		elt["halt_valid_time"] = str(valid_time)
+		date = int(float(elt["halt_time"]))
+		backup(bk_haltfile, elt)
+	
+	try:
+		with open(log_filename, "a") as bfile:
+			if boot == True:
+				bfile.write("boot   #"+elt["boot_acc"]+"\n")
+				bfile.write("time:  "+elt["boot_time"]+"\n")
+				bfile.write("date:  "+time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(date))+"\n")
+				bfile.write("valid: "+elt["boot_valid_time"]+"\n")
+				bfile.write("path:  "+elt["boot_path"]+"\n")
+			elif halt == True:
+				bfile.write("halt   #"+elt["halt_acc"]+"\n")
+				bfile.write("time:  "+elt["halt_time"]+"\n")
+				bfile.write("date:  "+time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(date))+"\n")
+				bfile.write("valid: "+elt["halt_valid_time"]+"\n")
+				bfile.write("path:  "+elt["halt_path"]+"\n")
+			bfile.write("---------------------------------------------\n")
+	except IOError:
+		exit(1)
+	exit(0)
+
